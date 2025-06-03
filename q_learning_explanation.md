@@ -1,1 +1,163 @@
-# Q-Learning: Learning the Optimal Action-Value Function (PYQ 8iii - May 2024, PYQ 6a - 2022, PYQ 7a - CBGS)\n\n## 1. What is Q-Learning?\n\n**Q-Learning** is a popular **model-free**, **off-policy** reinforcement learning algorithm. Its primary goal is to learn the **optimal action-value function, denoted as `Q*(s,a)`**. This function tells us the maximum expected cumulative reward an agent can obtain by taking action `a` in state `s` and then following the optimal policy thereafter.\n\n*   **Model-Free:** Q-Learning doesn\'t need to know or learn the environment\'s model (i.e., the transition probabilities `P(s\'|s,a)` or the reward function `R(s,a,s\')`). It learns directly from the experiences (state, action, reward, next state tuples) it gathers by interacting with the environment.\n*   **Off-Policy:** Q-Learning can learn the optimal policy `π*` even if the actions it takes to explore the environment are determined by a different policy (often called a behavior policy, like an ε-greedy policy). This means it learns about the greedy (optimal) policy while behaving non-greedily (exploring).\n\n**The \"Q\" in Q-Learning stands for \"Quality.\"** The algorithm learns the quality of state-action pairs.\n\n## 2. Core Idea and Key Concepts\n\n### a) The Q-Value `Q(s,a)`\nThe Q-value `Q(s,a)` represents the expected total discounted future reward if we are in state `s`, take action `a`, and then continue to act optimally from that point onwards.\n\n### b) The Q-Table\nFor problems with discrete states and actions, Q-learning often uses a **Q-table**. This is simply a lookup table where rows represent states and columns represent actions. Each cell `(s,a)` in this table stores the current estimate of `Q(s,a)`.\n*   **Initialization:** The Q-table is typically initialized with arbitrary values (e.g., all zeros), or sometimes optimistic values to encourage exploration. `Q(terminal_state, action)` is always 0, as no future rewards can be gained from a terminal state.\n\n### c) Temporal Difference (TD) Learning\nQ-learning is a form of **Temporal Difference (TD) learning**. TD learning methods update their estimates based on other learned estimates, without waiting for the final outcome of an episode. Specifically, Q-learning updates its Q-value for a state-action pair `(s,a)` based on the observed reward `r` and the estimated Q-value of the *next* state `s\'` (specifically, `max_{a\'} Q(s\',a\')`). This is known as bootstrapping.\n\n### d) Off-Policy Nature: Learning vs. Behavior Policy\n*   **Target Policy (`π*`):** The policy Q-learning tries to learn, which is the optimal greedy policy (always selecting the action with the highest Q-value).\n*   **Behavior Policy:** The policy used by the agent to actually select actions during training to explore the environment. This is often an **ε-greedy policy**.\nQ-learning is off-policy because the update rule uses the maximum Q-value for the next state (`max_{a'} Q(s',a')`), which corresponds to the greedy target policy, regardless of what action was actually chosen by the behavior policy in that next state.\n\n### e) Exploration vs. Exploitation\nTo find the optimal policy, the agent needs to balance:\n*   **Exploitation:** Taking actions that it currently believes are best (based on highest Q-values) to maximize immediate reward.\n*   **Exploration:** Taking actions that are not currently believed to be the best, to discover new states and potentially better actions.\n\nAn **ε-greedy strategy** is commonly used:\n*   With probability `ε` (epsilon), the agent chooses a random action (explores).\n*   With probability `1-ε`, the agent chooses the action with the highest Q-value for the current state (exploits).\nTypically, `ε` is started high and gradually decayed over time to shift from exploration to exploitation.\n\n## 3. The Q-Learning Algorithm Steps\n\n1.  **Initialize:** Create and initialize the Q-table `Q(s,a)` for all state-action pairs to arbitrary values (e.g., 0). Set `Q(terminal\_state, ·) = 0`.\n2.  **Loop for each episode:** (An episode is a sequence of steps from a starting state to a terminal state)\n    a.  **Initialize `s`:** Set `s` to the starting state of the episode.\n    b.  **Loop for each step of the episode** (or until `s` is a terminal state):\n        i.  **Choose Action `a`:** Select action `a` from state `s` using a policy derived from the current Q-values (e.g., ε-greedy policy).\n        ii. **Take Action `a`, Observe `r` and `s\'`:** Perform action `a`. Observe the immediate reward `r` and the next state `s\'` from the environment.\n        iii. **Update Q-value:** Update the Q-table entry for `Q(s,a)` using the Q-learning update rule:\n            `Q(s,a) ← Q(s,a) + α [r + γ max_{a\'} Q(s\',a\') - Q(s,a)]`\n        iv. **Update State:** Set `s ← s\'` (move to the next state).\n3.  **Repeat** step 2 until convergence (e.g., Q-values stabilize) or for a fixed number of episodes.\n\n## 4. The Q-Learning Update Rule\n\nThe heart of Q-learning is its update rule, which is derived from the Bellman optimality equation:\n\n`Q_{new}(s,a) = Q_{old}(s,a) + α * [ \underbrace{r + γ \max_{a\'} Q_{old}(s\',a\')}_{\text{TD Target}} - Q_{old}(s,a) ]`\n\nLet\'s break down the components:\n\n*   **`Q_{old}(s,a)`:** The current Q-value for the state-action pair `(s,a)` before the update.\n*   **`α` (Alpha - Learning Rate):** A scalar between 0 and 1 (`0 < α ≤ 1`). It determines how much the newly acquired information (the TD error) overrides the old Q-value. A small `α` means the agent learns slowly, while a large `α` means it learns quickly, potentially being too sensitive to recent experiences.\n*   **`r` (Reward):** The immediate reward received after taking action `a` in state `s` and transitioning to state `s\'`.\n*   **`γ` (Gamma - Discount Factor):** A scalar between 0 and 1 (`0 ≤ γ ≤ 1`). It determines the importance of future rewards. A `γ` close to 0 makes the agent \"myopic\" (focusing on immediate rewards), while a `γ` close to 1 makes it \"far-sighted\" (valuing future rewards highly).\n*   **`max_{a\'} Q_{old}(s\',a\')`:** This is the **maximum Q-value for the next state `s\'`**, considering all possible actions `a\'` from that state `s\'`. It represents the agent\'s current best estimate of the optimal future value obtainable from state `s\'`. This term is crucial for the off-policy nature of Q-learning because it directly estimates the value of the greedy policy.\n*   **`r + γ max_{a\'} Q_{old}(s\',a\')`:** This is called the **TD Target** or the **Bellman update target**. It\'s the new estimated value of `Q(s,a)` based on the reward `r` received and the estimated value of the best action from the next state `s\'`.\n*   **`[r + γ max_{a\'} Q_{old}(s\',a\') - Q_{old}(s,a)]`:** This is the **Temporal Difference (TD) Error**. It measures the difference between the current estimate `Q_{old}(s,a)` and the better-informed TD Target. The algorithm tries to reduce this error.\n\nThe update rule essentially nudges the current `Q(s,a)` value towards the TD Target.\n\n## 5. Convergence and Finding the Optimal Policy\n\nIf the learning rate `α` is appropriately decreased over time (e.g., satisfying certain stochastic approximation conditions) and all state-action pairs are visited and updated infinitely often (ensured by sufficient exploration), Q-learning is guaranteed to converge to the optimal action-value function `Q*(s,a)`.\n\nOnce the Q-values have converged (or after sufficient training):\n*   The **optimal action-value function `Q*(s,a)`** is learned (approximated in the Q-table).\n*   The **optimal policy `π*(s)`** can be derived directly from `Q*(s,a)` by choosing the action with the maximum Q-value in each state:\n    `π*(s) = argmax_a Q*(s,a)`\n    This means, in any state `s`, the agent will select the action `a` that maximizes its expected long-term reward according to the learned Q-values.\n\n## 6. Advantages of Q-Learning\n\n*   **Model-Free:** Does not require a model of the environment\'s dynamics (transitions or rewards). It learns directly from experience.\n*   **Off-Policy:** Can learn the optimal policy even when actions are selected using an exploratory (sub-optimal) policy. This allows for more flexible exploration strategies.\n*   **Simple to Implement:** The core concept and update rule are relatively straightforward.\n*   **Guaranteed Convergence:** Under certain conditions, it provably converges to the optimal Q-values.\n\n## 7. Disadvantages and Challenges\n\n*   **Large State/Action Spaces:** For problems with many states and/or actions, the Q-table can become extremely large and impractical to store and update (the \"curse of dimensionality\").\n    *   **Solution:** Function approximation methods, such as Deep Q-Networks (DQNs), use neural networks to approximate `Q(s,a)` instead of a table.\n*   **Discrete Spaces:** Standard Q-learning assumes discrete states and actions. Extensions are needed for continuous spaces.\n*   **Slow Convergence:** Can be slow to converge, especially for complex problems, as it might take many iterations to propagate information through the Q-table.\n*   **Learning Rate and Exploration Parameters:** Performance can be sensitive to the choice of learning rate (`α`), discount factor (`γ`), and exploration strategy (e.g., `ε` in ε-greedy).\n\n## 8. Simple Grid World Example\n\nConsider a 2x2 grid world:\n`S0 | S1 (Goal +10)`\n`S2 | S3 (Pit -10)`\nActions: Up, Down, Left, Right. If an action leads off the grid, agent stays in place.\n`γ = 0.9`, `α = 0.1`.\n\n**Q-Table Initialization (all zeros):**\n| State | Up | Down | Left | Right |\n|-------|----|------|------|-------|\n| S0    | 0  | 0    | 0    | 0     |\n| S1    | 0  | 0    | 0    | 0     | (Terminal)\n| S2    | 0  | 0    | 0    | 0     |\n| S3    | 0  | 0    | 0    | 0     | (Terminal)\n\n**Episode 1, Step 1:**\n*   Agent starts at S0. Policy: ε-greedy (let\'s say it chooses Right).\n*   Action: `a = Right`.\n*   Transition: S0 → S1 (Goal). Reward `r = +10`.\n*   Next state `s\' = S1`.\n*   `max_{a\'} Q(S1,a\') = 0` (since S1 is terminal, or Q-values for S1 are all 0).\n*   Update `Q(S0, Right)`:\n    `Q(S0,Right) ← Q(S0,Right) + α [r + γ max_{a\'} Q(S1,a\') - Q(S0,Right)]`\n    `Q(S0,Right) ← 0 + 0.1 [10 + 0.9 * 0 - 0]`\n    `Q(S0,Right) ← 0 + 0.1 * 10 = 1.0`\n\nUpdated Q-Table:\n| State | Up | Down | Left | Right |\n|-------|----|------|------|-------|\n| S0    | 0  | 0    | 0    | **1.0** |\n| ...   | ...| ...  | ...  | ...   |\n\nIf the agent instead moved from S2 to S3 (Pit, r=-10):\n*   `Q(S2,Right) ← 0 + 0.1 [-10 + 0.9 * 0 - 0] = -1.0`\n\nOver many episodes, these Q-values will propagate and converge towards their optimal values, guiding the agent to choose actions leading to S1 and avoiding S3.\n\n## 9. Summary for Exams (PYQ 8iii - May 2024, PYQ 6a - 2022, PYQ 7a - CBGS)\n\n*   **Q-Learning Definition:** A model-free, off-policy RL algorithm that learns the optimal action-value function `Q*(s,a)`.\n*   **Goal:** To find the \"quality\" or expected cumulative reward of taking action `a` in state `s` and then acting optimally.\n*   **Q-Table:** Stores `Q(s,a)` values for discrete state-action pairs.\n*   **Core Update Rule:** `Q(s,a) ← Q(s,a) + α [r + γ max_{a\'} Q(s\',a\') - Q(s,a)]`\n    *   `α`: Learning rate.\n    *   `γ`: Discount factor.\n    *   `max_{a\'} Q(s\',a\')`: Key for off-policy learning; uses the best action from the next state for the update, regardless of how the agent is actually behaving.\n*   **TD Learning:** Learns from current estimates without waiting for final outcome.\n*   **Off-Policy:** Learns the optimal (greedy) policy while exploring with a different behavior policy (e.g., ε-greedy).\n*   **Optimal Policy Derivation:** Once `Q*(s,a)` is learned, `π*(s) = argmax_a Q*(s,a)`.\n*   **Key Characteristics:** Simple, widely used, but can be slow and Q-table size can be an issue for large problems. 
+# Q-Learning: Learning the Optimal Action-Value Function (PYQ 8iii - May 2024, PYQ 6a - 2022, PYQ 7a - CBGS)
+
+## 1. What is Q-Learning?
+
+**Q-Learning** is a prominent **model-free, off-policy reinforcement learning (RL) algorithm**. Its primary goal is to learn the **optimal action-value function, denoted as `Q*(s,a)`**.
+
+*   **Model-Free:** Q-Learning does not require a model of the environment (i.e., it doesn't need to know the transition probabilities `P(s'|s,a)` or the reward function `R(s,a,s')`). It learns directly from experience by interacting with the environment.
+*   **Off-Policy:** Q-Learning can learn the optimal policy `π*` even if the actions taken during the learning process are determined by a different, potentially more exploratory, policy (often called a behavior policy).
+*   **Action-Value Function (`Q(s,a)`):** This function represents the expected total discounted future reward (the "quality" or "Q-value") an agent can achieve by taking action `a` in state `s`, and then following the optimal policy thereafter.
+
+By learning `Q*(s,a)`, the agent can determine the best action to take in any given state by simply choosing the action that maximizes the Q-value for that state.
+
+## 2. Key Concepts in Q-Learning
+
+### a) Q-Table
+*   For environments with discrete states and actions, Q-Learning often uses a **Q-table**. This is a lookup table (like a matrix) where rows represent states and columns represent actions.
+*   Each cell `(s,a)` in the Q-table stores the current estimate of `Q(s,a)`.
+*   **Initialization:** The Q-table is typically initialized with arbitrary values (e.g., all zeros or small random numbers).
+*   As the agent interacts with the environment, these Q-values are iteratively updated.
+
+### b) Temporal Difference (TD) Learning
+Q-Learning is a form of **Temporal Difference (TD) learning**. TD learning methods update estimates based on other learned estimates, without waiting for the final outcome of an episode (unlike Monte Carlo methods).
+*   The Q-Learning update rule uses the current Q-value and the Q-value of the next state to update the Q-value of the current state-action pair. This is called **bootstrapping**.
+
+### c) Off-Policy Learning
+The "off-policy" aspect is crucial. Q-Learning learns the value of the optimal policy (`Q*(s,a)`) independently of the agent's actions during learning. This means:
+*   **Target Policy (`π*`):** The policy Q-Learning tries to learn is the optimal greedy policy (always pick the action with the highest Q-value).
+*   **Behavior Policy:** The policy used to select actions during training can be different (e.g., an ε-greedy policy that allows for exploration).
+This separation allows Q-Learning to explore the environment thoroughly while still learning the optimal way to act.
+
+### d) Exploration vs. Exploitation
+Like many RL algorithms, Q-Learning faces the exploration-exploitation dilemma:
+*   **Exploitation:** The agent uses its current knowledge (Q-values) to choose the action it believes is best to maximize immediate reward.
+*   **Exploration:** The agent tries new actions that it hasn't taken before or that don't currently have the highest Q-value, to discover potentially better paths or improve its Q-value estimates.
+
+**ε-Greedy Strategy:** A common way to balance this is the ε-greedy (epsilon-greedy) strategy:
+*   With probability `1-ε` (epsilon), choose the action with the highest Q-value for the current state (exploit).
+*   With probability `ε`, choose a random action (explore).
+*   Often, `ε` is started high (more exploration) and gradually decreased over time as the agent learns more about the environment (more exploitation).
+
+## 3. The Q-Learning Algorithm Steps
+
+The Q-Learning algorithm iteratively updates the Q-values in the Q-table based on experiences.
+
+1.  **Initialize Hyperparameters:**
+    *   Learning rate (`α` - alpha): Determines how much new information overrides old information (0 < α ≤ 1).
+    *   Discount factor (`γ` - gamma): Importance of future rewards (0 ≤ γ ≤ 1).
+    *   Exploration rate (`ε` - epsilon): Probability of choosing a random action.
+2.  **Initialize Q-Table:** `Q(s,a)` to zeros or small random values for all state-action pairs `(s,a)`.
+3.  **Loop for a fixed number of episodes (or until convergence):**
+    a.  **Start Episode:** Initialize the starting state `s` (e.g., reset the environment).
+    b.  **Loop for each step within the current episode (until state `s` is terminal or max steps reached):**
+        i.  **Choose Action (`a`):** Select action `a` from state `s` using an exploration/exploitation strategy (e.g., ε-greedy based on current `Q(s,.)` values).
+        ii. **Take Action & Observe:** Perform action `a`. Observe the resulting immediate reward `r` and the new state `s'`.
+        iii. **Update Q-Value:** Update `Q(s,a)` using the Q-Learning update rule (see below).
+        iv. **Move to Next State:** Set the current state `s ← s'`.
+    c.  **(Optional) Decay `ε`:** Gradually reduce the exploration rate `ε`.
+
+## 4. The Q-Learning Update Rule
+
+This is the heart of the Q-Learning algorithm. After taking action `a` in state `s`, receiving reward `r`, and observing the next state `s'`, the `Q(s,a)` value is updated as follows:
+
+`Q(s,a) ← Q(s,a) + α * [r + γ * max_{a'} Q(s',a') - Q(s,a)]`
+
+Let's break down the components:
+
+*   `Q(s,a)`: The current Q-value for the state-action pair.
+*   `α` (Alpha - Learning Rate):
+    *   Controls how much the new estimate influences the current Q-value.
+    *   If `α=0`, the agent learns nothing (Q-values don't change).
+    *   If `α=1`, the new estimate completely replaces the old Q-value.
+*   `r`: The immediate reward received after taking action `a` in state `s` and transitioning to `s'`.
+*   `γ` (Gamma - Discount Factor):
+    *   Determines the present value of future rewards.
+    *   If `γ=0`, the agent is myopic and only considers immediate rewards.
+    *   If `γ` is close to 1, future rewards are considered highly important.
+*   `max_{a'} Q(s',a')`:
+    *   This is the **maximum Q-value for the next state `s'`**, considering all possible actions `a'` that can be taken from `s'`.
+    *   It represents the agent's best estimate of the optimal future value it can get starting from `s'`.
+    *   This `max` operator is what makes Q-Learning learn the optimal policy (greedy action selection from the next state).
+*   `[r + γ * max_{a'} Q(s',a') - Q(s,a)]`: This entire term is called the **Temporal Difference (TD) Error**.
+    *   `r + γ * max_{a'} Q(s',a')` is the **TD Target** – the new estimated value of `Q(s,a)` based on the reward and the estimated value of the next state.
+    *   The TD Error is the difference between this new target value and the old `Q(s,a)` value.
+    *   The update essentially moves the current `Q(s,a)` value a fraction `α` towards the TD Target.
+
+The update rule is derived from the Bellman Optimality Equation for `Q*(s,a)`.
+
+## 5. Deriving the Optimal Policy
+
+Once the Q-Learning algorithm has converged (i.e., the Q-values in the Q-table are stable or change very little), the Q-table `Q(s,a)` approximates the optimal action-value function `Q*(s,a)`.
+
+The optimal policy `π*(s)` can then be easily derived by choosing the action that has the maximum Q-value in each state `s`:
+
+`π*(s) = argmax_a Q*(s,a)`
+
+This means that in any state `s`, the agent will select the action `a` for which `Q*(s,a)` is the largest.
+
+## 6. Advantages of Q-Learning
+
+*   **Model-Free:** Does not require a model of the environment's dynamics or reward function.
+*   **Off-Policy:** Can learn the optimal policy even when actions are chosen using an exploratory (sub-optimal) policy. This allows for more flexible exploration strategies.
+*   **Simple to Implement:** The update rule is relatively straightforward.
+*   **Guaranteed Convergence (under certain conditions):** If all state-action pairs are visited infinitely often and the learning rate `α` is decayed appropriately, Q-Learning is guaranteed to converge to the optimal Q-values.
+
+## 7. Disadvantages and Challenges
+
+*   **Large State/Action Spaces:** The Q-table can become excessively large for problems with many states or actions, making it infeasible to store and slow to learn (Curse of Dimensionality).
+    *   **Solution:** Function approximation methods (e.g., Deep Q-Networks - DQNs) can be used to estimate Q-values instead of using a table.
+*   **Continuous Spaces:** Basic Q-Learning is designed for discrete states and actions. Modifications or different algorithms are needed for continuous spaces.
+*   **Convergence Speed:** Can be slow to converge, especially for complex problems.
+*   **Choice of Hyperparameters:** Performance can be sensitive to the choice of learning rate (`α`), discount factor (`γ`), and exploration strategy (`ε`).
+
+## 8. Simple Grid World Example
+
+Consider a 2x2 grid:
+`S0 | S1 (Goal +10)`
+`--------------`
+`S2 | S3 (Pit -10)`
+
+Actions: `Up, Down, Left, Right`. Stay in place if action hits a wall.
+Initialize Q-table with zeros. `α=0.1`, `γ=0.9`, `ε=0.1`.
+
+**Episode 1, Step 1:**
+*   Start at `S0`. Current `Q(S0,.) = [0,0,0,0]`.
+*   Choose action: With `ε=0.1`, let's say we explore and choose `Right` (action `a`).
+*   Take action `Right`: Environment gives `r=0` (no immediate reward), next state `s'=S1` (Goal).
+*   Update `Q(S0, Right)`:
+    *   `max_{a'} Q(S1,a')`: Since `S1` is Goal, assume `Q(S1,.)` is effectively `[10,10,10,10]` if we treat terminal state value directly, or more typically, `max Q(S1,a')` would be 0 if it's terminal with no further actions, and the reward `r` for *reaching* S1 is +10. Let's assume `r` is the reward for the transition *to* `S1`.
+    *   Let reward `r` for moving from S0 to S1 be +10 (for reaching the goal state).
+    *   `max_{a'} Q(S1,a') = 0` (as S1 is terminal, no future Q-values from S1).
+    *   TD Target = `r + γ * max_{a'} Q(S1,a') = 10 + 0.9 * 0 = 10`.
+    *   TD Error = `10 - Q(S0, Right) = 10 - 0 = 10`.
+    *   `Q(S0, Right) ← Q(S0, Right) + α * TD Error = 0 + 0.1 * 10 = 1.0`.
+*   New Q-Table (partial): `Q(S0, Right) = 1.0`.
+*   `s ← S1`. Episode ends as S1 is terminal.
+
+**Episode 2, Step 1:**
+*   Start at `S0`. `Q(S0,Right)=1.0`, others 0.
+*   Choose action: Say we exploit, choose `Right`.
+*   Take action `Right`: `r=10`, `s'=S1`.
+*   Update `Q(S0, Right)`:
+    *   TD Target = `10 + 0.9 * 0 = 10`.
+    *   TD Error = `10 - Q(S0, Right) = 10 - 1.0 = 9`.
+    *   `Q(S0, Right) ← 1.0 + 0.1 * 9 = 1.0 + 0.9 = 1.9`.
+*   New Q-Table (partial): `Q(S0, Right) = 1.9`.
+
+Over many iterations, the Q-values will propagate through the table, and `Q(S0,Right)` will converge towards the true optimal value for taking `Right` from `S0`.
+
+## 9. Summary for Exams (PYQ 8iii - May 2024, PYQ 6a - 2022, PYQ 7a - CBGS)
+
+*   **Q-Learning:** A model-free, off-policy RL algorithm that learns the optimal action-value function `Q*(s,a)`.
+*   **Core Idea:** Iteratively updates Q-values in a Q-table (for discrete spaces) using experiences `(s, a, r, s')`.
+*   **Update Rule (Key Formula):**
+    `Q(s,a) ← Q(s,a) + α [r + γ * max_{a'} Q(s',a') - Q(s,a)]`
+    *   `α`: Learning rate.
+    *   `γ`: Discount factor.
+    *   `r + γ * max_{a'} Q(s',a')`: TD Target (estimated optimal future reward).
+    *   The term in `[]` is the TD Error.
+*   **Off-Policy:** Learns optimal Q-values even if actions are selected by a different (e.g., ε-greedy) policy for exploration.
+*   **Exploration:** Uses strategies like ε-greedy to balance exploring new actions and exploiting known good actions.
+*   **Optimal Policy Derivation:** `π*(s) = argmax_a Q*(s,a)`.
+*   **Advantages:** Simple, no model needed, effective for many problems.
+*   **Challenges:** Large/continuous state-action spaces, hyperparameter tuning. 
